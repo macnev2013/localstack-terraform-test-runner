@@ -1,0 +1,127 @@
+name: Execute Tests
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+
+  goat-prepare:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout GOAT
+      uses: actions/checkout@v3
+
+    - name: Checkout Terraform AWS Provider
+      uses: actions/checkout@v3
+      with:
+        repository: hashicorp/terraform-provider-aws
+        path: './terraform-provider-aws'
+
+    - id: set-matrix
+      run: echo "::set-output name=matrix::$(python list-services.py)"
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+  goat:
+    needs: goat-prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.goat-prepare.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    env:
+      DNS_ADDRESS: 0
+      AWS_DEFAULT_REGION: us-east-2
+      AWS_ALTERNATE_REGION: eu-west-1
+
+    steps:
+
+    - uses: actions/setup-go@v3
+      with:
+        go-version: 1.18.x
+
+    - name: Set up Python 3.10.5
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10.5'
+
+    - name: Checkout goat
+      uses: actions/checkout@v3
+
+    - name: Checkout Localstack
+      uses: actions/checkout@v3
+      with:
+        repository: localstack/localstack
+        path: './localstack'
+
+    - name: Checkout Terraform AWS Provider
+      uses: actions/checkout@v3
+      with:
+        repository: hashicorp/terraform-provider-aws
+        path: './terraform-provider-aws'
+
+    - name: Patch Terraform Provider
+      working-directory: ./terraform-provider-aws
+      run: |
+        git apply ../etc/tf-patch/0001-endpoints.patch
+
+    - name: Cache Go dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/terraform-provider-aws/go.sum') }}
+
+    - name: Installing Golang Dependancies
+      working-directory: ./terraform-provider-aws
+      run: |
+        go mod vendor
+        go install github.com/vakenbolt/go-test-report@latest
+
+    - name: Cache Python .venv
+      id: python-cache
+      uses: actions/cache@v2
+      with:
+        path: ./.venv/
+        key: ${{ runner.os }}-venv-${{ hashFiles('**/setup.cfg') }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install libsasl2-dev -y
+        pip install --upgrade pip
+        pip install pyyaml
+
+    - name: Installing Localstack Dependancies and Start Localstack
+      working-directory: ./localstack
+      run: |
+        make install
+        make start &
+
+    - name: Check Localstack Endpoint
+      uses: jtalk/url-health-check-action@v2
+      with:
+        url: http://localhost:4566
+        max-attempts: 30
+        retry-delay: 5s
+        retry-all: true
+
+    - name: Run Test Cases
+      working-directory: ./terraform-provider-aws
+      run: |
+        TF_ACC=1 AWS_DEFAULT_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test go test ./internal/service/${{ matrix.service }} -test.v -json | go-test-report
+
+    - name: Rename Test Report
+      working-directory: ./terraform-provider-aws
+      run: |
+        mv test_report.html test_report-${{ matrix.service }}.html
+
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v3
+      working-directory: ./terraform-provider-aws
+      with:
+        name: upload-${{ matrix.service }}
+        path: |
+          ./test_report-${{ matrix.service }}.html
