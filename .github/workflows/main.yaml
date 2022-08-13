@@ -120,8 +120,7 @@ jobs:
 
     - name: Archive artifacts
       uses: actions/upload-artifact@v3
-      working-directory: ./terraform-provider-aws
       with:
         name: upload-${{ matrix.service }}
         path: |
-          ./test_report-${{ matrix.service }}.html
+          ./terraform-provider-aws/test_report-${{ matrix.service }}.html
