@@ -109,9 +109,10 @@ jobs:
         retry-all: true
 
     - name: Run Test Cases
-      working-directory: ./terraform-provider-aws
+      env:
+        CI: true
       run: |
-        TF_ACC=1 AWS_DEFAULT_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test go test ./internal/service/${{ matrix.service }} -test.v -json | go-test-report
+        bash ./run.sh ${{ matrix.service }}
 
     - name: Rename Test Report
       working-directory: ./terraform-provider-aws
