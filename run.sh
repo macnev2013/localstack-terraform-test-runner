@@ -32,19 +32,19 @@ if [ $# == 2 ]; then
     echo "Service: $1 | Test: $2"
     if [ $PARALLEL == 1 ]; then
         echo "Parallelism: $VALUE"
-        go test ./internal/service/$1 -test.count 1 -test.v -test.timeout 10m -parallel $VALUE -json | go-test-report --title "$1 $(DATE)"
+        go test ./internal/service/$1 -test.count 1 -test.v -test.timeout 10m -parallel $VALUE -json | go-test-report --title $1
     else
         echo "Parallelism: Auto"
-        go test ./internal/service/$1 -test.count 1 -test.v -test.timeout 10m -json | go-test-report --title "$1 $(DATE)"
+        go test ./internal/service/$1 -test.count 1 -test.v -test.timeout 10m -json | go-test-report --title $1
     fi
 elif [ $# == 1 ]; then
     echo "Service: $1 | Test: All"
     if [ $PARALLEL == 1 ]; then
         echo "Parallelism: $VALUE"
-        go test ./internal/service/$1 -test.count 1 -test.v -test.timeout 10m -parallel $VALUE -json | go-test-report --title "$1 $(DATE)"
+        go test ./internal/service/$1 -test.count 1 -test.v -test.timeout 10m -parallel $VALUE -json | go-test-report --title $1
     else
         echo "Parallelism: Auto"
-        go test ./internal/service/$1 -test.count 1 -test.v -test.timeout 10m -json | go-test-report --title "$1 $(DATE)"
+        go test ./internal/service/$1 -test.count 1 -test.v -test.timeout 10m -json | go-test-report --title $1
     fi
 else
     echo "usage: ./run.sh service_name [test_case_pattern]"
