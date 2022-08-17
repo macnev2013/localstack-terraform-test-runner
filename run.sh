@@ -9,7 +9,8 @@ export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 
 PARALLELISM_MAPPING=( "route53resolver:4"
-    "ec2:4")
+    "ec2:4"
+    "route53:4")
 # example
 # PARALLELISM_MAPPING=( "route53resolver:4"
 #         "s3:2"
